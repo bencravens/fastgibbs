@@ -3,11 +3,12 @@ import math
 import time
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.covariance import EmpiricalCovariance
+from sklearn.covariance import EmpiricalCovariance as Ecov
 import scipy.sparse as sp
 import scipy
 from scipy import ndimage
 from numpy.testing import assert_array_equal
+import seaborn as sns
 
 #load class
 class gibbs_cheby:
@@ -15,12 +16,14 @@ class gibbs_cheby:
        for sampling from distributions of the form N(mu,A^(-1)). 
     """
 
-    def __init__(self,dims,nu,omega,A):
+    def __init__(self,nu,omega,A):
         #Initialize the properties of the gibbs sampler
-
-        #set up dimension and means
-        self.dims = dims
+        #set up dimensions and nu
         self.nu = nu
+        [m,n] = np.shape(A)
+        assert m==n, "A matrix must be square"
+        self.dims = m
+        
         #set up the symmetric succesive over relaxation parameter (S.S.O.R)
         self.omega = omega
         # omega: 0 < omega < 2
@@ -161,16 +164,31 @@ class gibbs_cheby:
             self.kappa = self.beta + (1 - self.alpha)*self.kappa
             
             #now we can calculate the error 
-            self.e_cov = EmpiricalCovariance().fit(self.state).covariance_
+            self.e_cov = Ecov().fit(self.state).covariance_
             self.error = np.linalg.norm(self.cov - self.e_cov)/np.linalg.norm(self.cov)
             self.error_vec.append(self.error)
             print("relative error at iteration {}/{} is {}".format(j,k,self.error))
+
+            #exit condition
+            if self.error<1e-2:
+                print("converged at iter {}/{}".format(j,k))
+                break
     
+    def get_state(self):
+        """
+        getter function for gibbs sampler class, returns current state, and the covariance of that state
+        """
+        self.e_cov = Ecov().fit(self.state).covariance_
+        return self.state, self.e_cov
+
     def plot(self):
-        #plot error
-        #plt.plot(range(self.n),np.log(self.error_vec),linestyle=":")
-        return self.error_vec,self.n,self.l_max,self.l_min,self.cond,np.linalg.norm(self.A)
-    
+        f, ax = plt.subplots(figsize=(10, 6))
+        hm = sns.heatmap(abs(self.e_cov - self.cov)/np.linalg.norm(self.cov), annot=False, ax=ax, cmap="coolwarm",
+                 linewidths=.05,fmt='.5f')
+        f.subplots_adjust(top=0.93)
+        t= f.suptitle('Empirical covariance and real covariance relative error heatmap', fontsize=14)   
+        plt.show()
+
     def cholesky_error(self):
         #want to calculate the error from cholesky sampling as an accuracy benchmark
         chol_samples = []
@@ -188,30 +206,15 @@ class gibbs_cheby:
         chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
         plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
 
-if __name__=="__main__":
+if __name__ == "__main__":
     #testing this on a simple example
-    t0 = time.time()
-
-    d = 100
-    nu = np.zeros(d)
-    error_vec_ave = []
-    #input format is (dims,nu,alpha,omega)
-    alpha = 0.01
-    A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims))
-    for i in range(5):
-        my_gibbs = gibbs_cheby(d,nu,1.0,A)
-        my_gibbs.sample()
-        error_vec,n,l_max,l_min,cond,norm = my_gibbs.plot()
-        error_vec_ave.append(error_vec)
-    print("minimum value is {}".format(np.min(np.mean(error_vec_ave,axis=0))))
-    plt.plot(range(n),np.log(np.mean(error_vec_ave,axis=0)),label="mean")
-    ratio = l_min/l_max
-    sigma = (1 - math.sqrt(ratio))/(1 + math.sqrt(ratio))
-    rho = (1 - ratio)/(1 + ratio)
-    plt.plot(range(n),np.log(sigma**2)*range(n),label="convergence upper bound")
-    plt.title("error scaling")
-    plt.legend()
-    my_gibbs.cholesky_error()
-    plt.show()
-    t1 = time.time()
-    print("elapsed time is {}".format(t1-t0))
+    temp = []
+    dims = 200
+    alpha = 0.005
+    test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
+    real_cov = np.linalg.inv(test_A)
+    my_gibbs = gibbs_cheby(np.ones(dims),1.0,test_A)
+    my_gibbs.sample()
+    state,e_cov = my_gibbs.get_state()
+    print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
+    my_gibbs.plot()

@@ -5,10 +5,11 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.covariance import EmpiricalCovariance
+from sklearn.covariance import EmpiricalCovariance as Ecov
 import scipy.sparse as sp
 import scipy
 from scipy import ndimage
+import seaborn as sns
 
 class gibbs_SSOR:
     """This is a python3 implementation of a multivariate gibbs sampler 
@@ -16,12 +17,12 @@ class gibbs_SSOR:
        the block form gibbs sampler with the "symmetric successive over-relaxation" 
        (SSOR) relaxation scheme
     """
-    def __init__(self,dims,means,omega,A):
+    def __init__(self,omega,A):
         #Initialize the properties of the gibbs sampler
 
-        #set up dimension and means
-        self.dims = dims
-        self.means = means
+        [m,n] = np.shape(A)
+        assert m==n, "A matrix must be square"
+        self.dims = m
         
         #set up relaxation parameter
         self.omega = omega
@@ -72,7 +73,7 @@ class gibbs_SSOR:
         #now take max and min eigenvalues
         self.l_max = np.max(np.abs(eigvals))
 
-    def sample(self,sample_num=20000,k=100):
+    def sample(self,sample_num=int(5e4),k=30):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         self.n = k
@@ -93,16 +94,29 @@ class gibbs_SSOR:
                 y2 = self.gamma*np.matmul(np.matmul(self.M_inv_tran,self.sqrt_D),z)
                 y = y1 + y2
                 self.state[i,:] = y
-            if j%10==0:
-                print("iter {}".format(j))
-            self.e_cov = EmpiricalCovariance().fit(self.state).covariance_
+            self.e_cov = Ecov().fit(self.state).covariance_
             self.error = np.linalg.norm(self.e_cov-self.cov)/np.linalg.norm(self.cov)
             print(self.error)
             self.error_vec.append(self.error)
+            #stopping criteria
+            if self.error<1e-2:
+                print("converged at iter {}/{}".format(j,k))
+                break
+
+    def get_state(self):
+        """
+        getter function for gibbs sampler class, returns current state, and the covariance of that state
+        """
+        self.e_cov = Ecov().fit(self.state).covariance_
+        return self.state, self.e_cov
 
     def plot(self):
-        #plt.plot(range(self.n),np.log(self.error_vec),linestyle=":")
-        return self.error_vec,self.n,self.l_max
+        f, ax = plt.subplots(figsize=(10, 6))
+        hm = sns.heatmap(abs(self.e_cov - self.cov)/np.linalg.norm(self.cov), annot=False, ax=ax, cmap="coolwarm",
+                 linewidths=.05,fmt='.5f')
+        f.subplots_adjust(top=0.93)
+        t= f.suptitle('Empirical covariance and real covariance relative error heatmap', fontsize=14)   
+        plt.show()
 
     def cholesky_error(self):
         #want to calculate the mean cholesky sampling accuracy to compare with
@@ -124,22 +138,13 @@ class gibbs_SSOR:
 if __name__ == "__main__":
     #testing this on a simple example
     temp = []
-    dim = 10
-    run_num = 4
-    alpha = 0.5
-    example_A = np.eye(dims)*alpha - 30.5*scipy.ndimage.filters.laplace(np.eye(dims))  
-    for i in range(run_num):
-        print("executing run {}/{}".format(i+1,run_num))
-        my_gibbs = gibbs_SSOR(dim,np.zeros(dim),1.0,example_A)
-        my_gibbs.sample()
-        err,n,l_max = my_gibbs.plot()
-        temp.append(err)
-    my_gibbs.cholesky_error()
-    plt.plot(range(n),np.log(np.mean(temp,axis=0)),label="mean actual convergence rate")
-    plt.plot(range(n),np.log(l_max**2)*range(n),label="theoretical convergence rate")
-    plt.xlabel('iterations')
-    plt.ylabel('L2 norm between empirical and actualy covariance (log scale)')
-    plt.title("Theoretical vs Actual Convergence rate for a Gibbs sampler")
-    plt.legend()
-    plt.show();
+    dims = 50
+    alpha = 0.01
+    test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
+    real_cov = np.linalg.inv(test_A)
+    my_gibbs = gibbs_SSOR(1.0,test_A)
+    my_gibbs.sample()
+    state,e_cov = my_gibbs.get_state()
+    print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
+    my_gibbs.plot()
 

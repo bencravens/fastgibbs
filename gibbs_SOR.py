@@ -1,9 +1,10 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.covariance import EmpiricalCovariance
+from sklearn.covariance import EmpiricalCovariance as Ecov
 import scipy.sparse as sp
 import scipy
 from scipy import ndimage
+import seaborn as sns
 
 class gibbs_SOR:
     """This is a python3 implementation of a multivariate gibbs sampler 
@@ -11,12 +12,13 @@ class gibbs_SOR:
        this version of the implementation uses the successive over relaxation
        (SOR) relaxation technique to speed up the convergence. 
     """
-    def __init__(self,dims,means,omega,A):
+    def __init__(self,omega,A):
         #Initialize the properties of the gibbs sampler
 
-        #set up dimension and means
-        self.dims = dims
-        self.means = means
+        #set up dimensions
+        [m,n] = np.shape(A)
+        assert m==n, "A matrix must be square"
+        self.dims = int(m)
         
         #set up relaxation parameter
         self.omega = omega
@@ -51,7 +53,7 @@ class gibbs_SOR:
         #now take max and min eigenvalues
         self.l_max = np.max(np.abs(eigvals))
 
-    def sample(self,sample_num=10000,k=20):
+    def sample(self,sample_num=int(5e4),k=30):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         self.n = k
@@ -67,17 +69,30 @@ class gibbs_SOR:
                 c = self.c_sample*np.random.randn(self.dims)
                 #iterate!
                 result1 = np.matmul(self.M_inv,np.matmul(self.N,cur_state))
-                result2 = np.matmul(self.M_inv,c) + self.means
+                result2 = np.matmul(self.M_inv,c) 
                 self.state[i,:] = result1 + result2
-            self.e_cov = EmpiricalCovariance().fit(self.state).covariance_
+            self.e_cov = Ecov().fit(self.state).covariance_
             self.error = np.linalg.norm(self.e_cov-self.cov)/np.linalg.norm(self.cov) 
-            if j%50==0:
-                print(self.error)
+            print(self.error)
             self.error_vec.append(self.error)
+            if self.error<1e-3:
+                print("converged at iteration {}/{}".format(j,k))
+                break
+ 
+    def get_state(self):
+        """
+        getter function for gibbs sampler class, returns current state, and the covariance of that state
+        """
+        self.e_cov = Ecov().fit(self.state).covariance_
+        return self.state, self.e_cov
 
     def plot(self):
-        #plt.plot(range(self.n),np.log(self.error_vec),linestyle=":")
-        return self.error_vec,self.n,self.l_max
+        f, ax = plt.subplots(figsize=(10, 6))
+        hm = sns.heatmap(abs(self.e_cov - self.cov)/np.linalg.norm(self.cov), annot=False, ax=ax, cmap="coolwarm",
+                 linewidths=.05,fmt='.5f')
+        f.subplots_adjust(top=0.93)
+        t= f.suptitle('Empirical covariance and real covariance relative error heatmap', fontsize=14)   
+        plt.show()
     
     def cholesky_error(self):
             #want to calculate the mean cholesky sampling accuracy to compare with
@@ -92,28 +107,20 @@ class gibbs_SOR:
                 chol_samples.append(y)
             chol_samples = np.squeeze(chol_samples,axis=2)
             print(np.shape(chol_samples))
-            e_cov = EmpiricalCovariance().fit(chol_samples).covariance_
+            e_cov = Ecov().fit(chol_samples).covariance_
             chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
             plt.plot(range(self.n),np.ones(self.n)*np.log(chol_error),label="cholesky")
 
 if __name__ == "__main__":
     #testing this on a simple example
     temp = []
-    dims = 50
-    run_num = 3
-    for i in range(run_num):
-        print("executing run {}/{}".format(i+1,run_num))
-        alpha = 0.01
-        test_A = np.eye(dims)*alpha - 5.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
-        my_gibbs = mvgibbs_SOR(dim,np.zeros(dim),1.0,test_A)
-        my_gibbs.sample()
-        err,n,l_max = my_gibbs.plot()
-        temp.append(err)
-    my_gibbs.cholesky_error()
-    plt.plot(range(n),np.log(np.mean(temp,axis=0)),label="mean actual convergence rate")
-    plt.plot(range(n),np.log(l_max**2)*range(n),label="theoretical convergence rate")
-    plt.xlabel('iterations')
-    plt.ylabel('L2 norm between empirical and actualy covariance (log scale)')
-    plt.title("Theoretical vs Actual Convergence rate for an SOR Gibbs sampler")
-    plt.legend()
-    plt.show();
+    dims = 100
+    alpha = 0.01
+    test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
+    real_cov = np.linalg.inv(test_A)
+    my_gibbs = gibbs_SOR(1.0,test_A)
+    my_gibbs.sample()
+    state,e_cov = my_gibbs.get_state()
+    print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
+    my_gibbs.plot()
+

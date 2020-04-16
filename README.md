@@ -19,3 +19,10 @@ We can then clone the repository
 sudo git clone https://github.com/bencravens/fastgibbs
 ```
 And the package should be installed.
+
+# TODO: 
+<ul>
+  <li>Gitignore</li>
+  <li>Example section</li>
+  <li>pip installable</li>
+</ul>

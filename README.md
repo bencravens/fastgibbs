@@ -58,6 +58,8 @@ alpha = 1e-3
 test_A = -0.5*scipy.ndimage.filters.laplace(np.eye(dims))
 #add a bump along the diagonal
 test_A += alpha*np.eye(dims)
+#make covariance for illustrative purposes. This may not be computationally feasible for large matrices
+real_cov = np.linalg.inv(test_A)
 ```
 Now we have constructed our example matrix, we can take a look to see that it looks right.
 ```python
@@ -83,10 +85,29 @@ So it is a very poorly conditioned problem. This is fine as the dimensionality o
 ```python
 my_gibbs = gibbs_cheby(1.0,test_A)
 ```
-The first argument in gibbs_cheby objet is the relaxation parameter 
+
+The first argument in gibbs_cheby objet is the relaxation parameter. This should be in the range (0,2) for the algorithm to converge, and the optimal value depends on the type of problem. For our problem, we have left it as 1.0. We then sample from the distribution using the sample method of the oject instance "my_gibbs", and then use the getter method "get_state" to retrieve our samples and the empirical covariance matrix of our set of samples. For an n dimensional state space, where we take k samples, the "state" vector that the get_state method returns will be of shape (k,n), where each row of the matrix is a sample, and each column corresponds to a variable of the state space. 
+
+```python
+my_gibbs.sample(int(5e4),40)
+state,e_cov = my_gibbs.get_state()
+print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
+>>>converged at iter 35/40
+relative error is 0.009908193517315386
+```
+
+Here the first argument of the "sample" method is the sample size, how many times you want to try from the distribution, and the second argument is k, the maximum number of times you wish to iterate to converge your samples to the target distribution. Because the matrix A is ill-conditioned, I picked a high k. The algorithm will finish once the relative error in the covariance of the target distribution is 1%, or if it reaches the maximum iteration. If you want to visualize which elements of the covariance matrix are converging faster/slower, you can use the plot function to visualize this.
+
+```python
+my_gibbs.plot()
+```
+
+<img src="./matrixheatmap.png">
+</br>
+</br>
+
 # TODO: 
 <ul>
   <li>Gitignore</li>
-  <li>Example section</li>
   <li>pip installable</li>
 </ul>

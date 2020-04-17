@@ -213,7 +213,7 @@ if __name__ == "__main__":
     alpha = 0.005
     test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
     real_cov = np.linalg.inv(test_A)
-    my_gibbs = gibbs_cheby(np.ones(dims),1.0,test_A)
+    my_gibbs = gibbs_cheby(1.0,test_A)
     my_gibbs.sample()
     state,e_cov = my_gibbs.get_state()
     print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))

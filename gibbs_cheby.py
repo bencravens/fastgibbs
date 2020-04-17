@@ -16,13 +16,13 @@ class gibbs_cheby:
        for sampling from distributions of the form N(mu,A^(-1)). 
     """
 
-    def __init__(self,nu,omega,A):
+    def __init__(self,omega,A):
         #Initialize the properties of the gibbs sampler
         #set up dimensions and nu
-        self.nu = nu
         [m,n] = np.shape(A)
         assert m==n, "A matrix must be square"
         self.dims = m
+        self.nu = np.ones(self.dims)
         
         #set up the symmetric succesive over relaxation parameter (S.S.O.R)
         self.omega = omega

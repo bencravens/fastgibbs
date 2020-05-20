@@ -9,6 +9,7 @@ import scipy
 from scipy import ndimage
 from numpy.testing import assert_array_equal
 import seaborn as sns
+from numpy import linalg as la
 
 #load class
 class gibbs_cheby:
@@ -31,8 +32,8 @@ class gibbs_cheby:
         #set up precision matrix
         #set up precision and covariance 
         #load from txt file for well conditioned matrix
-        #self.A = np.loadtxt("res.txt",delimiter=',')
         self.A = A
+        self.b = np.ones([self.dims,1])
         self.cov = np.linalg.inv(self.A)
         self.cond = np.linalg.cond(self.A)
         print(self.cond)
@@ -108,7 +109,7 @@ class gibbs_cheby:
         #now setting constants
         self.delta = ((self.l_max - self.l_min)/4)**2
         
-    def sample(self,sample_num=int(5e4),k=25):
+    def sample(self,precond,sample_num=int(5e4),k=25):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         
@@ -118,7 +119,11 @@ class gibbs_cheby:
 
         #make initial states
         self.state = np.random.randn(sample_num,self.dims)
-        self.past_state = np.random.randn(sample_num,self.dims) 
+        #are we using the conjugate gradient preconditioner?
+        if precond:
+            print("using conjugate gradient sampler to initialize state")
+            self.state = self.conj_grad_sample()
+        self.past_state = np.random.randn(sample_num,self.dims)
         #alpha and tau are the acceleration parameters
         #set equal to one
         self.tau = 2/(self.l_max + self.l_min)
@@ -170,7 +175,7 @@ class gibbs_cheby:
             print("relative error at iteration {}/{} is {}".format(j,k,self.error))
 
             #exit condition
-            if self.error<1e-2:
+            if self.error<1.5e-2:
                 print("converged at iter {}/{}".format(j,k))
                 break
     
@@ -206,15 +211,68 @@ class gibbs_cheby:
         chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
         plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
 
+    def conj_grad(self,err_tol):
+        """perform conjugate gradient descent on Ax=b until 
+        error tolerance is reached. Also return a sample y ~ N(0,A^(-1))"""
+        A = self.A
+        b = self.b
+
+        [m,n] = np.shape(A)
+        #initialize state vector
+        x = np.zeros([m,1])
+        #initialize sample as well
+        y = x
+        #initialize residual
+        r = b - np.dot(A,x)
+        #initialize search direction
+        p = r
+        #normalizing constant
+        d = np.dot(np.transpose(p),np.dot(A,p))
+        #iterate m times (or until convergence)
+        for i in range(m):
+            gamma = (np.dot(np.transpose(r),r))/d
+            x = x + np.dot(p,gamma)
+            #sample from N(0,1)
+            z = np.random.randn()
+            #update sample 
+            y = y + (z/np.sqrt(d))*p
+            #store old r to calculate new beta
+            r_old = r
+            r = r - gamma*np.dot(A,p)
+            #calculate new beta
+            beta_num = -np.dot(np.transpose(r),r)
+            beta_denom = np.dot(np.transpose(r_old),r_old)
+            beta = beta_num/beta_denom
+            #calculate new search direction
+            p = r - beta*p
+            #calculate new normalization constant
+            d = np.dot(np.transpose(p),np.dot(A,p))
+            if la.norm(r) < err_tol:
+                return [x,y]
+        return [x,y]
+
+    def conj_grad_sample(self):
+        samples = []
+        for i in range(self.sample_num):
+            [x,y] = self.conj_grad(2.2e-16)
+            samples.append(y)
+        print("{} conjugate gradient samples completed".format(self.sample_num))
+        samples = np.squeeze(samples,axis=2)
+        return samples
+
 if __name__ == "__main__":
     #testing this on a simple example
     temp = []
-    dims = 200
-    alpha = 0.005
-    test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
+    dims = 50
+    alpha = 0.0005
+    #test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
+    test_A = np.loadtxt("res.txt",delimiter=',')
     real_cov = np.linalg.inv(test_A)
+    initial_time = time.time()
     my_gibbs = gibbs_cheby(1.0,test_A)
-    my_gibbs.sample()
+    my_gibbs.sample(True)
     state,e_cov = my_gibbs.get_state()
     print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
+    final_time = time.time()
+    print("total time is {}".format(final_time - initial_time))
     my_gibbs.plot()

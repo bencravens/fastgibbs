@@ -1,0 +1,54 @@
+Timer unit: 1e-06 s
+
+Total time: 13.9238 s
+File: conj_grad.py
+Function: conj_grad at line 6
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     6                                           @profile
+     7                                           def conj_grad(A,b,k):
+     8                                               """perform conjugate gradient descent on Ax=b until 
+     9                                               error tolerance is reached"""
+    10     10000      19311.0      1.9      0.1      [m,n] = np.shape(A)
+    11                                               #initialize state vector
+    12     10000      10407.0      1.0      0.1      x = np.zeros([m,1])
+    13                                               #initialize sample as well
+    14     10000       4232.0      0.4      0.0      y = x
+    15                                               #initialize residual
+    16     10000      32412.0      3.2      0.2      r = b - np.dot(A,x)
+    17                                               #initialize transpose of residual
+    18     10000      39364.0      3.9      0.3      rsold = np.dot(np.transpose(r),r)
+    19                                               #initialize search direction
+    20     10000       3925.0      0.4      0.0      p = r
+    21                                               #calculate A*p vector
+    22     10000      22428.0      2.2      0.2      A_p = np.dot(A,p)
+    23                                               #normalizing constant
+    24     10000      55650.0      5.6      0.4      d = np.dot(np.transpose(p),np.dot(A,p))
+    25                                               #random vectors
+    26     10000      40700.0      4.1      0.3      z = np.random.randn(k)
+    27                                               #iterate k times (or until convergence)
+    28    510000     213093.0      0.4      1.5      for i in range(k):
+    29    500000     569645.0      1.1      4.1          gamma = (rsold)/d
+    30    500000    1250058.0      2.5      9.0          x = x + np.dot(p,gamma)
+    31                                                   #update sample 
+    32    500000    2391093.0      4.8     17.2          y = y + (z[i]/np.sqrt(d))*p
+    33                                                   #store old r to calculate new beta
+    34    500000     922820.0      1.8      6.6          r = r - gamma*A_p
+    35    500000    1988759.0      4.0     14.3          rsnew = np.dot(np.transpose(r),r)
+    36                                                   #is the magnitude of the residual < 1e-16?
+    37    500000    1053905.0      2.1      7.6          if np.sqrt(rsnew) < 1e-8:
+    38                                                       print("converged at iteration {}/{}".format(i,k))
+    39                                                       break
+    40                                                   #calculate new beta
+    41    500000     718091.0      1.4      5.2          beta = -rsnew/rsold
+    42                                                   #update rsold constant
+    43    500000     219244.0      0.4      1.6          rsold = rsnew
+    44                                                   #calculate new search direction
+    45    500000    1010247.0      2.0      7.3          p = r - beta*p
+    46                                                   #calculate A*p vector
+    47    500000    1383339.0      2.8      9.9          A_p = np.dot(A,p)
+    48                                                   #calculate new normalization constant
+    49    500000    1970354.0      3.9     14.2          d = np.dot(np.transpose(p),A_p)
+    50     10000       4739.0      0.5      0.0      return [x,y]
+

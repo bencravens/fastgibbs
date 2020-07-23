@@ -46,7 +46,7 @@ class gibbs:
         #now take max and min eigenvalues
         self.l_max = np.max(np.abs(eigvals))
 
-    def sample(self,sample_num=int(5e4),k=25):
+    def sample(self,sample_num=int(8e4),k=10):
         """
         Now sample from the distribution using the Gauss-Siedel matrix splitting. The sampler will halt when a certain
         relative error difference between iterations k,k+1 is reached, default 1e-3. There is an optional "error" parameter 
@@ -61,6 +61,11 @@ class gibbs:
         for j in range(k):
             if j%5==0:
                 print("iteration number {}/{}".format(j,k))
+            self.e_cov = Ecov().fit(self.state).covariance_
+            self.error = np.linalg.norm(self.e_cov-self.cov)/np.linalg.norm(self.cov)
+            self.error_vec.append(self.error)
+            print("error is {}".format(self.error))
+            
             #iterate for each sample
             for i in range(sample_num):
                 cur_state = self.state[i,:]
@@ -70,14 +75,6 @@ class gibbs:
                 self.state[i,:] = np.matmul(self.M_inv,np.matmul(self.N,cur_state)) + np.matmul(self.M_inv,c)
             #break if iteration has converged. Set convergence criteria to be 1e-2 relative error
             #store the error
-            self.e_cov = Ecov().fit(self.state).covariance_
-            self.error = np.linalg.norm(self.e_cov-self.cov)/np.linalg.norm(self.cov)
-            if self.error<1e-2:
-                print("converged at iter {}/{}".format(j,k))
-                break
-            self.error_vec.append(self.error)
-            print("error is {}".format(self.error))
-
     def get_state(self):
         """
         getter function for gibbs sampler class, returns current state, and the covariance of that state
@@ -92,7 +89,10 @@ class gibbs:
         f.subplots_adjust(top=0.93)
         t= f.suptitle('Empirical covariance and real covariance relative error heatmap', fontsize=14)   
         plt.show()
- 
+
+    def plot_error(self):
+        plt.semilogy(range(self.n),self.error_vec)
+
     def cholesky_error(self):
         #want to calculate the mean cholesky sampling accuracy to compare with
         chol_samples = []

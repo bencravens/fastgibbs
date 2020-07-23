@@ -17,7 +17,7 @@ class gibbs_cheby:
        for sampling from distributions of the form N(mu,A^(-1)). 
     """
 
-    def __init__(self,omega,A):
+    def __init__(self,omega,A,err_tol):
         #Initialize the properties of the gibbs sampler
         #set up dimensions and nu
         [m,n] = np.shape(A)
@@ -25,6 +25,9 @@ class gibbs_cheby:
         self.dims = m
         self.nu = np.ones(self.dims)
         
+        #error tolerence (for convergence checking...)
+        self.err_tol = err_tol
+
         #set up the symmetric succesive over relaxation parameter (S.S.O.R)
         self.omega = omega
         # omega: 0 < omega < 2
@@ -102,14 +105,14 @@ class gibbs_cheby:
         self.e_cov = None
         #initializing error vector
         self.error_vec = []
-        
+        self.flops_vec = []        
         #now setting constant values as defined in SSOR algorithm...
         #finding sqrt(D_omega)
         self.sqrt_D_omega = np.sqrt((2/self.omega - 1)*np.diag(self.A))
         #now setting constants
         self.delta = ((self.l_max - self.l_min)/4)**2
         
-    def sample(self,precond,sample_num=int(5e4),k=25):
+    def sample(self,precond,sample_num=int(8e4),k=10):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         
@@ -137,10 +140,17 @@ class gibbs_cheby:
             
         #iterate over k
         for j in range(k):
-            #update each sample
+            
+            #Now we can calculate the error 
+            self.e_cov = Ecov().fit(self.state).covariance_
+            self.error = np.linalg.norm(self.cov - self.e_cov)/np.linalg.norm(self.cov)
+            self.error_vec.append(self.error)
+            print("relative error at iteration {}/{} is {}".format(j,k,self.error))
+ 
             for i in range(sample_num):
                 #want to do this for each sample, first grab current state
                 self.cur_state = self.state[i,:]
+                 
                 #sample z
                 self.z = np.random.randn(self.dims,) + self.nu
                 #now make c & x
@@ -168,17 +178,21 @@ class gibbs_cheby:
             self.a = (2/self.tau - 1) + (self.b - 1)*(1/self.tau + 1/self.kappa - 1)
             self.kappa = self.beta + (1 - self.alpha)*self.kappa
             
+            """
             #now we can calculate the error 
             self.e_cov = Ecov().fit(self.state).covariance_
             self.error = np.linalg.norm(self.cov - self.e_cov)/np.linalg.norm(self.cov)
             self.error_vec.append(self.error)
             print("relative error at iteration {}/{} is {}".format(j,k,self.error))
+            """
 
             #exit condition
-            if self.error<1.5e-2:
+            """
+            if self.error<self.err_tol:
                 print("converged at iter {}/{}".format(j,k))
                 break
-    
+            """
+
     def get_state(self):
         """
         getter function for gibbs sampler class, returns current state, and the covariance of that state
@@ -194,6 +208,9 @@ class gibbs_cheby:
         t= f.suptitle('Empirical covariance and real covariance relative error heatmap', fontsize=14)   
         plt.show()
 
+    def plot_error(self):
+        plt.semilogy(range(self.n),self.error_vec)
+
     def cholesky_error(self):
         #want to calculate the error from cholesky sampling as an accuracy benchmark
         chol_samples = []
@@ -207,9 +224,10 @@ class gibbs_cheby:
             chol_samples.append(y)
         chol_samples = np.squeeze(chol_samples,axis=2)
         print(np.shape(chol_samples))
-        e_cov = EmpiricalCovariance().fit(chol_samples).covariance_
+        e_cov = Ecov().fit(chol_samples).covariance_
         chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
-        plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
+        #plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
+        plt.semilogy(range(self.n),np.ones(self.n)*chol_error,label="Cholesky decomposition sampling")
 
     def conj_grad(self,err_tol):
         """perform conjugate gradient descent on Ax=b until 
@@ -263,16 +281,18 @@ class gibbs_cheby:
 if __name__ == "__main__":
     #testing this on a simple example
     temp = []
-    dims = 50
+    dims = 10
     alpha = 0.0005
     #test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
-    test_A = np.loadtxt("res.txt",delimiter=',')
+    test_A = np.loadtxt("A.txt",delimiter=',')
     real_cov = np.linalg.inv(test_A)
+    err_tol = 5e-2
     initial_time = time.time()
-    my_gibbs = gibbs_cheby(1.0,test_A)
-    my_gibbs.sample(True)
+    my_gibbs = gibbs_cheby(1.0,test_A,err_tol)
+    my_gibbs.sample(False)
     state,e_cov = my_gibbs.get_state()
     print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
     final_time = time.time()
     print("total time is {}".format(final_time - initial_time))
-    my_gibbs.plot()
+    my_gibbs.cholesky_error()
+    my_gibbs.plot_error()

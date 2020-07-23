@@ -14,8 +14,6 @@ for i=1:n
     D(i,i) = D(i,i)/D_max;
 end
 
-
-
 %now we want to create a random orthogonal matrix U, as we can generate 
 %the matrix corresponding to the eigenvalues in D by going
 %UDU', source: https://math.stackexchange.com/questions/54818/construct-matrix-given-eigenvalues-and-eigenvectors

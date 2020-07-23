@@ -1,4 +1,2 @@
-2500.0000000004547
-l_max 1.000000000000001, l_min 0.00272974608037062
-using conjugate gradient sampler to initialize state
-50000 conjugate gradient samples completed
+2.8441910424600354
+l_max 1.0000000000000002, l_min 0.8932568208583702

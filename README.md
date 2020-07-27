@@ -5,8 +5,8 @@ A python3 package which implements different sampling algorithms, including the 
 TODO: make package available via pip.
 </br>
 For now, simply clone this package into the directory in which you store python packages on your local machine.
-In Python 2.7 and up, this can be found by executing the following command in a python shell:
-```python
+This can be found by executing the following command in a python shell:
+```python3
 >>> import site; site.getsitepackages()
 ['/usr/local/lib/python3.6/dist-packages', '/usr/lib/python3/dist-packages', '/usr/lib/python3.6/dist-packages']
 ```

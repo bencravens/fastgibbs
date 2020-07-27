@@ -24,8 +24,6 @@ from fastgibbs.gibbs_cheby import gibbs_cheby
 if __name__=="__main__":
     
     #load constants
-    ############################################
-    #test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
     test_A = np.loadtxt("A.txt",delimiter=',')
     real_cov = np.linalg.inv(test_A)
     err_tol = 5e-2

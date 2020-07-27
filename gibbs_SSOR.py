@@ -82,6 +82,10 @@ class gibbs_SSOR:
 
         #iterate j times
         for j in range(k):
+            self.e_cov = Ecov().fit(self.state).covariance_
+            self.error = np.linalg.norm(self.e_cov-self.cov)/np.linalg.norm(self.cov)
+            print(self.error)
+            self.error_vec.append(self.error)
             #iterate for each sample
             for i in range(sample_num):
                 self.cur_state = self.state[i,:]
@@ -94,15 +98,7 @@ class gibbs_SSOR:
                 y2 = self.gamma*np.matmul(np.matmul(self.M_inv_tran,self.sqrt_D),z)
                 y = y1 + y2
                 self.state[i,:] = y
-            self.e_cov = Ecov().fit(self.state).covariance_
-            self.error = np.linalg.norm(self.e_cov-self.cov)/np.linalg.norm(self.cov)
-            print(self.error)
-            self.error_vec.append(self.error)
-            #stopping criteria
-            if self.error<1e-2:
-                print("converged at iter {}/{}".format(j,k))
-                break
-
+            
     def get_state(self):
         """
         getter function for gibbs sampler class, returns current state, and the covariance of that state
@@ -117,6 +113,9 @@ class gibbs_SSOR:
         f.subplots_adjust(top=0.93)
         t= f.suptitle('Empirical covariance and real covariance relative error heatmap', fontsize=14)   
         plt.show()
+
+    def plot_error(self):
+        plt.semilogy(range(self.n),self.error_vec,label="SSOR")
 
     def cholesky_error(self):
         #want to calculate the mean cholesky sampling accuracy to compare with

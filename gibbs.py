@@ -91,7 +91,7 @@ class gibbs:
         plt.show()
 
     def plot_error(self):
-        plt.semilogy(range(self.n),self.error_vec)
+        plt.semilogy(range(self.n),self.error_vec,label="gibbs")
 
     def cholesky_error(self):
         #want to calculate the mean cholesky sampling accuracy to compare with

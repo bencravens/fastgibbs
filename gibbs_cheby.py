@@ -209,7 +209,7 @@ class gibbs_cheby:
         plt.show()
 
     def plot_error(self):
-        plt.semilogy(range(self.n),self.error_vec)
+        plt.semilogy(range(self.n),self.error_vec,label="chebyshev")
 
     def cholesky_error(self):
         #want to calculate the error from cholesky sampling as an accuracy benchmark
@@ -227,7 +227,7 @@ class gibbs_cheby:
         e_cov = Ecov().fit(chol_samples).covariance_
         chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
         #plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
-        plt.semilogy(range(self.n),np.ones(self.n)*chol_error,label="Cholesky decomposition sampling")
+        plt.semilogy(range(self.n),np.ones(self.n)*chol_error,label="cholesky")
 
     def conj_grad(self,err_tol):
         """perform conjugate gradient descent on Ax=b until 

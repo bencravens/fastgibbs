@@ -1,0 +1,12 @@
+%    
+%                n_{i} if i=j
+%    W_{i,j} = { -1 if i is next to j
+%                0 otherwise    
+%
+
+%take in as input the dimensions of the lattice...
+%how many rows in the lattice?
+m = input('How many rows?')
+n = input('How many columns?')
+
+printf("%d x %d\n",m,n)

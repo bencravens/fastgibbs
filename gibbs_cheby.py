@@ -39,6 +39,7 @@ class gibbs_cheby:
         self.b = np.ones([self.dims,1])
         self.cov = np.linalg.inv(self.A)
         self.cond = np.linalg.cond(self.A)
+        print(self.A)
         print(self.cond)
         #now set up the mean
         self.mu = np.matmul(np.linalg.inv(self.A),self.nu)
@@ -112,7 +113,7 @@ class gibbs_cheby:
         #now setting constants
         self.delta = ((self.l_max - self.l_min)/4)**2
         
-    def sample(self,precond,sample_num=int(8e4),k=10):
+    def sample(self,precond,sample_num=int(3e4),k=25):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         
@@ -278,21 +279,43 @@ class gibbs_cheby:
         samples = np.squeeze(samples,axis=2)
         return samples
 
+    def espectrum(self):
+        state,e_cov = self.get_state()
+        #make empirical precision matrix by inverting empirical covariance matrix
+        A_emp = la.inv(e_cov)
+        A = self.A #grab analytic matrix 
+        for matrix in [A_emp, A]:
+            #get evals
+            eigs, eigvecs = la.eig(matrix)
+            #there should be some small imagininary part to eigenvalues due to
+            #numerical error, but it should not be too large (say, greater than 1%
+            #of the absolute value of the eigenvalue)
+            assert (np.mean(eigs.imag)/np.mean(eigs) < 0.01), "ERROR: complex eigenvalues"
+            #get rid of imaginary evals
+            eigs = eigs.real
+            #sort evals to plot in ascending order
+            eigs = np.sort(eigs)
+            #eigs+= np.mean(eigs)/100
+            #plot
+            if np.array_equal(matrix,A_emp):
+                plt.semilogy(eigs,linestyle=":",label='empirical precision matrix')
+            else:
+                plt.semilogy(eigs,label='analytic precision matrix')
+
 if __name__ == "__main__":
-    #testing this on a simple example
-    temp = []
-    dims = 10
-    alpha = 0.0005
-    #test_A = np.eye(dims)*alpha - 0.5*scipy.ndimage.filters.laplace(np.eye(dims)) 
-    test_A = np.loadtxt("A.txt",delimiter=',')
+    test_A = np.loadtxt("2d.txt",delimiter=',')
+    #need to add diagonal bump to make invertible
+    [m,n] = np.shape(test_A)
+    test_A = test_A 
     real_cov = np.linalg.inv(test_A)
-    err_tol = 5e-2
+    err_tol = 5e-3
     initial_time = time.time()
     my_gibbs = gibbs_cheby(1.0,test_A,err_tol)
     my_gibbs.sample(False)
+    my_gibbs.espectrum()
     state,e_cov = my_gibbs.get_state()
+    np.savetxt("3d_emp.txt",e_cov, delimiter=",")
     print("relative error is {}".format(np.linalg.norm(real_cov-e_cov)/np.linalg.norm(real_cov)))
     final_time = time.time()
     print("total time is {}".format(final_time - initial_time))
-    my_gibbs.cholesky_error()
     my_gibbs.plot_error()

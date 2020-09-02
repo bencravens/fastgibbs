@@ -3,7 +3,7 @@
 %    W_{i,j} = { -1 if i is next to j
 %                0 otherwise    
 %
-function W = lattice_maker(m,n)
+function W = lattice_maker(m,n,bump)
     %take in as input the dimensions of the lattice...
     fprintf("Lattice is %d x %d\n",m,n)
 
@@ -68,5 +68,6 @@ function W = lattice_maker(m,n)
             W(lattice(i,j),:) = tempvec;
         end
     end
-    writematrix(W)
+    W = W + bump*diag(diag(ones(n*m,n*m)))
+    csvwrite("2d_test.txt", W)
 end

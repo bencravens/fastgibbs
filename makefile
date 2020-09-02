@@ -6,3 +6,8 @@ cg:
 	kernprof -l conj_grad.py	
 	python3 -m line_profiler *.lprof >> profile.txt
 	more profile.txt
+eigs:
+	touch dim.txt
+	octave makeA.m
+	python3 test_eigenvalues.py
+	rm dim.txt

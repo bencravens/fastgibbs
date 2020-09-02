@@ -113,7 +113,7 @@ class gibbs_cheby:
         #now setting constants
         self.delta = ((self.l_max - self.l_min)/4)**2
         
-    def sample(self,precond,sample_num=int(3e4),k=25):
+    def sample(self,precond,sample_num=int(3e4),k=50):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         
@@ -188,11 +188,9 @@ class gibbs_cheby:
             """
 
             #exit condition
-            """
             if self.error<self.err_tol:
                 print("converged at iter {}/{}".format(j,k))
                 break
-            """
 
     def get_state(self):
         """
@@ -298,12 +296,12 @@ class gibbs_cheby:
             #eigs+= np.mean(eigs)/100
             #plot
             if np.array_equal(matrix,A_emp):
-                plt.semilogy(eigs,linestyle=":",label='empirical precision matrix')
+                plt.plot(eigs,linestyle=":",label='empirical precision matrix')
             else:
-                plt.semilogy(eigs,label='analytic precision matrix')
+                plt.plot(eigs,label='analytic precision matrix')
 
 if __name__ == "__main__":
-    test_A = np.loadtxt("2d.txt",delimiter=',')
+    test_A = np.loadtxt("2d_test.txt",delimiter=',')
     #need to add diagonal bump to make invertible
     [m,n] = np.shape(test_A)
     test_A = test_A 

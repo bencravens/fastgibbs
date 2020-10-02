@@ -10,6 +10,7 @@ from scipy import ndimage
 from numpy.testing import assert_array_equal
 import seaborn as sns
 from numpy import linalg as la
+import copy
 
 #load class
 class gibbs_cheby:
@@ -27,7 +28,7 @@ class gibbs_cheby:
         
         #error tolerence (for convergence checking...)
         self.err_tol = err_tol
-
+    
         #set up the symmetric succesive over relaxation parameter (S.S.O.R)
         self.omega = omega
         # omega: 0 < omega < 2
@@ -36,7 +37,6 @@ class gibbs_cheby:
         #set up precision and covariance 
         #load from txt file for well conditioned matrix
         self.A = A
-        self.b = np.ones([self.dims,1])
         self.cov = np.linalg.inv(self.A)
         self.cond = np.linalg.cond(self.A)
         print(self.A)
@@ -113,7 +113,7 @@ class gibbs_cheby:
         #now setting constants
         self.delta = ((self.l_max - self.l_min)/4)**2
         
-    def sample(self,precond,sample_num=int(3e4),k=50):
+    def sample(self,precond,sample_num=int(1e5),k=50):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         
@@ -122,12 +122,12 @@ class gibbs_cheby:
         self.n = k
 
         #make initial states
-        self.state = np.random.randn(sample_num,self.dims)
+        self.state = np.zeros([sample_num,self.dims])
         #are we using the conjugate gradient preconditioner?
         if precond:
             print("using conjugate gradient sampler to initialize state")
             self.state = self.conj_grad_sample()
-        self.past_state = np.random.randn(sample_num,self.dims)
+        self.past_state = np.zeros([sample_num,self.dims])
         #alpha and tau are the acceleration parameters
         #set equal to one
         self.tau = 2/(self.l_max + self.l_min)
@@ -228,77 +228,84 @@ class gibbs_cheby:
         #plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
         plt.semilogy(range(self.n),np.ones(self.n)*chol_error,label="cholesky")
 
-    def conj_grad(self,err_tol):
+    def conj_grad(self,sample_num):
         """perform conjugate gradient descent on Ax=b until 
         error tolerance is reached. Also return a sample y ~ N(0,A^(-1))"""
+        sample_num = int(sample_num)
         A = self.A
-        b = self.b
-
         [m,n] = np.shape(A)
-        #initialize state vector
-        x = np.zeros([m,1])
-        #initialize sample as well
-        y = x
-        #initialize residual
-        r = b - np.dot(A,x)
-        #initialize search direction
-        p = r
+        y_samples = np.zeros([sample_num,m])
+        y_samples_prev = copy.copy(y_samples)
+        error_prev = 1.5
+        x_samples = np.zeros([sample_num,m])
+        b = np.random.randn(m)
+        #initialize residuals
+        r = np.zeros([sample_num,m])
+        for i in range(sample_num):
+            r[i,:] = b - np.matmul(A,x_samples[i,:])
+        #initialize p, search direction
+        p = copy.copy(r)
         #normalizing constant
-        d = np.dot(np.transpose(p),np.dot(A,p))
-        #iterate m times (or until convergence)
-        for i in range(m):
-            gamma = (np.dot(np.transpose(r),r))/d
-            x = x + np.dot(p,gamma)
-            #sample from N(0,1)
-            z = np.random.randn()
-            #update sample 
-            y = y + (z/np.sqrt(d))*p
-            #store old r to calculate new beta
-            r_old = r
-            r = r - gamma*np.dot(A,p)
-            #calculate new beta
-            beta_num = -np.dot(np.transpose(r),r)
-            beta_denom = np.dot(np.transpose(r_old),r_old)
-            beta = beta_num/beta_denom
-            #calculate new search direction
-            p = r - beta*p
-            #calculate new normalization constant
-            d = np.dot(np.transpose(p),np.dot(A,p))
-            if la.norm(r) < err_tol:
-                return [x,y]
-        return [x,y]
+        d = np.zeros([sample_num,1])
+        for i in range(sample_num):
+            d[i] = np.matmul(np.transpose(p[i,:]),np.matmul(A,p[i,:]))
+        
+        for j in range(m): 
+            print("iter {} / {}".format(j,m)) 
+            cov = Ecov().fit(y_samples).covariance_
+            error = np.linalg.norm(self.cov - cov)/(np.linalg.norm(self.cov))
+            if (error > error_prev):
+                print("lost conjugacy. error is {} while previous error is {}".format(error,error_prev))
+                break
+            else:
+                error_prev = error
+            print("relative error at iteration {}/{} is {}".format(j,m,error))
+            #iterate m times (or until convergence)
+            for i in range(sample_num):
+                #grab state vector
+                x = x_samples[i,:] 
+                #grab sample as well
+                y = y_samples[i,:]
+                #gamma for this i
+                gamma = (np.dot(np.transpose(r[i,:]),r[i,:]))/d[i]
+                x = x + p[i,:]*gamma
+                #sample from N(0,1)
+                z = np.random.randn()
+                #update sample 
+                y = y + (z/np.sqrt(d[i,:]))*p[i,:]
+                #store old r to calculate new beta
+                r_old = copy.copy(r[i,:])
+                r[i,:] = r[i,:] - gamma*np.dot(A,p[i,:])
+                #calculate new beta
+                beta_num = -np.dot(np.transpose(r[i,:]),r[i,:])
+                beta_denom = np.dot(np.transpose(r_old),r_old)
+                beta = beta_num/beta_denom
+                #calculate new search direction
+                p[i,:] = r[i,:] - beta*p[i,:]
+                #calculate new normalization constant
+                d[i] = np.dot(np.transpose(p[i,:]),np.dot(A,p[i,:]))
+                y_samples[i,:] = y
+                x_samples[i,:] = x
+        return cov          
 
-    def conj_grad_sample(self):
-        samples = []
-        for i in range(self.sample_num):
-            [x,y] = self.conj_grad(2.2e-16)
-            samples.append(y)
-        print("{} conjugate gradient samples completed".format(self.sample_num))
-        samples = np.squeeze(samples,axis=2)
-        return samples
+    def conj_grad_sample(self,sample_num):
+        cov = self.conj_grad(sample_num)
+        print("{} conjugate gradient samples completed".format(sample_num))
+        return cov
 
     def espectrum(self):
         state,e_cov = self.get_state()
         #make empirical precision matrix by inverting empirical covariance matrix
-        A_emp = la.inv(e_cov)
-        A = self.A #grab analytic matrix 
-        for matrix in [A_emp, A]:
-            #get evals
-            eigs, eigvecs = la.eig(matrix)
-            #there should be some small imagininary part to eigenvalues due to
-            #numerical error, but it should not be too large (say, greater than 1%
-            #of the absolute value of the eigenvalue)
-            assert (np.mean(eigs.imag)/np.mean(eigs) < 0.01), "ERROR: complex eigenvalues"
-            #get rid of imaginary evals
-            eigs = eigs.real
-            #sort evals to plot in ascending order
-            eigs = np.sort(eigs)
-            #eigs+= np.mean(eigs)/100
-            #plot
-            if np.array_equal(matrix,A_emp):
-                plt.plot(eigs,linestyle=":",label='empirical precision matrix')
-            else:
-                plt.plot(eigs,label='analytic precision matrix')
+        #get evals
+        eigs, eigvecs = la.eigh(e_cov)
+        #there should be some small imagininary part to eigenvalues due to
+        #numerical error, but it should not be too large (say, greater than 1%
+        #of the absolute value of the eigenvalue)
+        print("eigenvalues of chebyshev algorithm are: {}".format(eigs))
+        #sort evals to plot in ascending order
+        eigs = np.sort(eigs)
+        #plot
+        plt.semilogy(eigs,linestyle=":",label='empirical covariance matrix')
 
 if __name__ == "__main__":
     test_A = np.loadtxt("2d_test.txt",delimiter=',')

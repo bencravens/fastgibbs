@@ -3,7 +3,6 @@ from numpy import linalg as la
 from sklearn.covariance import EmpiricalCovariance as Ecov
 import time
 
-@profile
 def conj_grad(A,b,k):
     """perform conjugate gradient descent on Ax=b until 
     error tolerance is reached"""
@@ -50,8 +49,7 @@ def conj_grad(A,b,k):
     return [x,y]
 
 if __name__=="__main__":
-    t_0 = time.time()
-    A = np.loadtxt("res.txt",delimiter=',')
+    A = np.loadtxt("dim.txt",delimiter=',')
     dims = np.shape(A)[0]
     print(np.shape(A))
     b = np.ones([dims,1])

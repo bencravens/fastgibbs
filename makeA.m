@@ -6,7 +6,7 @@ if str=="2d"
     x = input("Enter the x dimension of the grid: ");
     y = input("Enter the y dimension of the grid: ");
     alpha = input("Enter the size of the diagonal bump: ");
-    [lambda,V,A] = laplacian([x,y],x*y);
+    [lambda,V,A] = laplacian([x,y],{'NN' 'NN'},x*y);
     %we will add a constant on the diagonal to make A invertible, 
     %so we must also increase the evals by this constant
     lambda = lambda + alpha*ones(x*y,1);
@@ -25,7 +25,7 @@ elseif str=="3d"
     y = input("Enter the y dimension of the cube: ");
     z = input("Enter the z dimension of the cube: ");
     alpha = input("Enter the size of the diagonal bump: ");
-    [lambda,V,A] = laplacian([x,y,z],x*y*z);
+    [lambda,V,A] = laplacian([x,y,z],{'NN' 'NN' 'NN'}, x*y*z);
     %we will add a constant on the diagonal to make A invertible, 
     %so we must also increase the evals by this constant
     lambda = lambda + alpha*ones(x*y*z,1);

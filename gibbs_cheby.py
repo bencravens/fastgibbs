@@ -256,6 +256,7 @@ class gibbs_cheby:
             error = np.linalg.norm(self.cov - cov)/(np.linalg.norm(self.cov))
             if (error > error_prev):
                 print("lost conjugacy. error is {} while previous error is {}".format(error,error_prev))
+                print("re-orthogonalizing CG")
                 break
             else:
                 error_prev = error
@@ -305,7 +306,7 @@ class gibbs_cheby:
         #sort evals to plot in ascending order
         eigs = np.sort(eigs)
         #plot
-        plt.semilogy(eigs,linestyle=":",label='empirical covariance matrix')
+        plt.plot(eigs,linestyle=":",label='chebyshev empirical covariance matrix')
 
 if __name__ == "__main__":
     test_A = np.loadtxt("2d_test.txt",delimiter=',')

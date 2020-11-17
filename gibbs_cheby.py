@@ -239,7 +239,8 @@ class gibbs_cheby:
         y_samples_prev = copy.copy(y_samples)
         error_prev = 1.5
         x_samples = np.zeros([sample_num,m])
-        b = [i for i in range(m)]
+        #b = [i for i in range(m)]
+        b = np.random.randn(m)
         print("shape of b is {}".format(np.shape(b)))
         #initialize residuals
         r = np.asarray([b - np.matmul(A,x_samples[i,:]) for i in range(sample_num)])
@@ -290,7 +291,10 @@ class gibbs_cheby:
                 if (i==0):
                     p_temp = np.array(p[i,:],ndmin=2).T
                     print("p is {}".format(p_temp))
-                    p_matrix = np.append(p_matrix,p_temp,axis=1)
+                    if count==0:
+                        p_matrix = p_temp
+                    else:
+                        p_matrix = np.append(p_matrix,p_temp,axis=1)
                     d_vector = np.append(d_vector,d[0])
                     print("d vector is {}".format(d_vector))
                     print("d[0] is {}".format(d[0]))

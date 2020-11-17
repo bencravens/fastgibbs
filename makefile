@@ -9,5 +9,10 @@ cg:
 eigs:
 	touch dim.txt
 	octave makeA.m
-	python3 test_eigenvalues.py
+	python3 -i test_eigenvalues.py
+	rm dim.txt
+cov:
+	touch dim.txt
+	octave makeA.m
+	python3 -i test_covariance.py
 	rm dim.txt

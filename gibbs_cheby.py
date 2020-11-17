@@ -113,7 +113,7 @@ class gibbs_cheby:
         #now setting constants
         self.delta = ((self.l_max - self.l_min)/4)**2
         
-    def sample(self,precond,sample_num=int(1e5),k=50):
+    def sample(self,precond,sample_num=int(1e4),k=100):
         """NOW SAMPLING FROM THIS DISTRIBUTION USING ITERATIVE MATRIX SPLITTING 
         GIBBS SAMPLER"""
         
@@ -210,11 +210,11 @@ class gibbs_cheby:
     def plot_error(self):
         plt.semilogy(range(self.n),self.error_vec,label="chebyshev")
 
-    def cholesky_error(self):
+    def cholesky_sample(self,sample_num=int(1e4)):
         #want to calculate the error from cholesky sampling as an accuracy benchmark
         chol_samples = []
         print('doing cholesky now')
-        for i in range(self.sample_num):
+        for i in range(sample_num):
             C = np.linalg.cholesky(self.cov)
             mean = np.zeros((self.dims,))
             cov = np.eye(self.dims)
@@ -222,11 +222,12 @@ class gibbs_cheby:
             y = np.matmul(C,z)
             chol_samples.append(y)
         chol_samples = np.squeeze(chol_samples,axis=2)
-        print(np.shape(chol_samples))
         e_cov = Ecov().fit(chol_samples).covariance_
-        chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
+        return e_cov
+        #to plot error, uncomment these
+        #chol_error = np.linalg.norm(self.cov-e_cov)/np.linalg.norm(self.cov)
         #plt.semilogy(range(self.n),np.ones(self.n)*(chol_error),label="Cholesky decomposition sampling")
-        plt.semilogy(range(self.n),np.ones(self.n)*chol_error,label="cholesky")
+        #plt.semilogy(range(self.n),np.ones(self.n)*chol_error,label="cholesky")
 
     def conj_grad(self,sample_num):
         """perform conjugate gradient descent on Ax=b until 
@@ -238,29 +239,33 @@ class gibbs_cheby:
         y_samples_prev = copy.copy(y_samples)
         error_prev = 1.5
         x_samples = np.zeros([sample_num,m])
-        b = np.random.randn(m)
+        b = [i for i in range(m)]
+        print("shape of b is {}".format(np.shape(b)))
         #initialize residuals
-        r = np.zeros([sample_num,m])
-        for i in range(sample_num):
-            r[i,:] = b - np.matmul(A,x_samples[i,:])
+        r = np.asarray([b - np.matmul(A,x_samples[i,:]) for i in range(sample_num)])
         #initialize p, search direction
         p = copy.copy(r)
         #normalizing constant
-        d = np.zeros([sample_num,1])
-        for i in range(sample_num):
-            d[i] = np.matmul(np.transpose(p[i,:]),np.matmul(A,p[i,:]))
-        
-        for j in range(m): 
-            print("iter {} / {}".format(j,m)) 
+        print("shape of A is {}".format(np.shape(A)))
+        print("shape of p is {}".format(np.shape(p)))
+        print("shape of A*p[i,:] is {}".format(np.shape(np.matmul(A,p[0,:]))))
+        d = np.asarray([[np.matmul(np.transpose(p[i,:]),np.matmul(A,p[i,:]))] for i in range(sample_num)])
+        count=0
+        p_matrix = np.array([])
+        d_vector = np.array([])
+        while count < m:
+            print("iter {} / {}".format(count,m)) 
             cov = Ecov().fit(y_samples).covariance_
             error = np.linalg.norm(self.cov - cov)/(np.linalg.norm(self.cov))
             if (error > error_prev):
                 print("lost conjugacy. error is {} while previous error is {}".format(error,error_prev))
-                print("re-orthogonalizing CG")
+                print("reverting to more accurate samples at prev iteration")
+                y_samples = y_samples_prev
                 break
             else:
                 error_prev = error
-            print("relative error at iteration {}/{} is {}".format(j,m,error))
+                y_samples_prev = copy.copy(y_samples)
+            print("relative error at iteration {} is {}".format(count,error))
             #iterate m times (or until convergence)
             for i in range(sample_num):
                 #grab state vector
@@ -276,18 +281,34 @@ class gibbs_cheby:
                 y = y + (z/np.sqrt(d[i,:]))*p[i,:]
                 #store old r to calculate new beta
                 r_old = copy.copy(r[i,:])
-                r[i,:] = r[i,:] - gamma*np.dot(A,p[i,:])
+                r[i,:] = r[i,:] - gamma*np.matmul(A,p[i,:])
                 #calculate new beta
                 beta_num = -np.dot(np.transpose(r[i,:]),r[i,:])
                 beta_denom = np.dot(np.transpose(r_old),r_old)
                 beta = beta_num/beta_denom
+                #calculate analytic covariance here
+                if (i==0):
+                    p_temp = np.array(p[i,:],ndmin=2).T
+                    print("p is {}".format(p_temp))
+                    p_matrix = np.append(p_matrix,p_temp,axis=1)
+                    d_vector = np.append(d_vector,d[0])
+                    print("d vector is {}".format(d_vector))
+                    print("d[0] is {}".format(d[0]))
                 #calculate new search direction
                 p[i,:] = r[i,:] - beta*p[i,:]
                 #calculate new normalization constant
-                d[i] = np.dot(np.transpose(p[i,:]),np.dot(A,p[i,:]))
+                d[i] = np.matmul(np.transpose(p[i,:]),np.matmul(A,p[i,:]))
                 y_samples[i,:] = y
                 x_samples[i,:] = x
-        return cov          
+            count+=1
+        print("shape of p_matrix is {}".format(np.shape(p_matrix)))
+        print("shape of a matrix is {}".format(np.shape(self.A)))
+        print("d vector is {}".format(d_vector))
+        d_vector = np.asarray(d_vector)
+        d_matrix = np.diag(np.transpose(d_vector))
+        print("shape of d matrix is {}".format(np.shape(d_matrix)))
+        a_cov = np.matmul(p_matrix,np.matmul(la.inv(d_matrix),np.transpose(p_matrix)))
+        return cov, a_cov        
 
     def conj_grad_sample(self,sample_num):
         cov = self.conj_grad(sample_num)
@@ -298,15 +319,16 @@ class gibbs_cheby:
         state,e_cov = self.get_state()
         #make empirical precision matrix by inverting empirical covariance matrix
         #get evals
-        eigs, eigvecs = la.eigh(e_cov)
+        cheby_eigs, eigvecs = la.eigh(e_cov)
         #there should be some small imagininary part to eigenvalues due to
         #numerical error, but it should not be too large (say, greater than 1%
         #of the absolute value of the eigenvalue)
-        print("eigenvalues of chebyshev algorithm are: {}".format(eigs))
+        print("eigenvalues of chebyshev algorithm are: {}".format(cheby_eigs))
         #sort evals to plot in ascending order
-        eigs = np.sort(eigs)
+        #eigs = np.sort(eigs)
+        #cheby_eigs = np.ma.masked_where(eigs<1e-5,eigs)
         #plot
-        plt.plot(eigs,linestyle=":",label='chebyshev empirical covariance matrix')
+        return cheby_eigs,e_cov
 
 if __name__ == "__main__":
     test_A = np.loadtxt("2d_test.txt",delimiter=',')

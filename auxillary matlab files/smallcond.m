@@ -1,4 +1,4 @@
-function res = smallcond(n)
+n = 100
 
 %D is our diagonalized matrix with eigenvalues
 D = zeros(n,n);
@@ -29,5 +29,4 @@ cond(res)
 unique(eigs(res))
 
 %store the matrix in a txt file so i can read it with python
-writematrix(res)
-end
+csvwrite('test_A.txt',res)

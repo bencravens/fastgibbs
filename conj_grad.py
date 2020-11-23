@@ -79,8 +79,8 @@ def cg_plot(A,b):
     #########################################
     # solver solution plot                  #
     #########################################
-  
-    x_a = np.matmul(la.inv(A),b)
+    cov = la.inv(A) 
+    x_a = np.matmul(cov,b)
     x_cg,y,CG_cov = conj_grad(A,b)
     x_a = np.sort(np.ravel(x_a))
     x_cg = np.sort(np.ravel(x_cg))
@@ -88,21 +88,21 @@ def cg_plot(A,b):
     plt.plot(x_a,label="analytic solution")
     plt.plot(x_cg,marker='1',linestyle='none',label='CG solution')
     plt.legend()
-    plt.title("analytic solution and cg solution for Ax=b, rel err {}".format(rel_err))
+    plt.title("Analytic solution and cg solution for Ax=b, rel err {}".format(rel_err))
     plt.show()
     
     #########################################
     #    COVARIANCE EIGENVALUE PLOT         #
     #########################################
-
-    eigs, eigvecs = la.eigh(la.inv(A))
+    rel_err = la.norm(cov - CG_cov)/la.norm(cov)
+    eigs, eigvecs = la.eigh(cov)
     plt.semilogy(eigs,label="actual eigenvalues")
     eigs_CG, eigvecs_CG = la.eigh(CG_cov)
     #masking invalid CG eigenvalues
     eigs_CG = np.ma.masked_where(eigs_CG<1e-5,eigs_CG)
     plt.semilogy(eigs_CG,marker='1',linestyle='none',label='CG empirical eigenvalues')
     plt.legend()
-    plt.title("CG sampler covariance eigenvalues vs actual eigenvalues")
+    plt.title("CG sampler cov evals vs actual evals. Relative error in cov matrix approximation {}".format(rel_err))
     plt.show()
 
 if __name__=="__main__":

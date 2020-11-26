@@ -32,7 +32,7 @@ cov = la.inv(test_A)
 print("doing conjugate gradient samples")
 err_tol = 3e-2
 my_gibbs = gibbs_cheby(1.0,test_A,err_tol)
-cg_cov, cg_cov_analytic = my_gibbs.conj_grad_sample(5e4)
+cg_cov, cg_cov_analytic = my_gibbs.conj_grad_sample(1e5)
 cg_err = la.norm(cov - cg_cov)/la.norm(cov)
 #grabbing eigenvalues of empirical covariance
 conj_eigs, eigvecs = la.eigh(cg_cov)

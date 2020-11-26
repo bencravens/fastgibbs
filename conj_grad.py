@@ -5,7 +5,7 @@ from sklearn.covariance import EmpiricalCovariance as Ecov
 import time
 from matplotlib import pyplot as plt
 
-def conj_grad(A,b):
+def conj_grad(A):
     """perform conjugate gradient descent on Ax=b until 
     error tolerance is reached"""
     [m,n] = np.shape(A)
@@ -108,13 +108,10 @@ def cg_plot(A,b):
 if __name__=="__main__":
     A = np.loadtxt("test_A.txt",delimiter=',')
     [dims,dims] = np.shape(A)
-    b = np.random.randn(dims,1)
-    cg_plot(A,b)
+    cg_plot(A)
     A = np.loadtxt("2d.txt",delimiter=',')
     [dims,dims] = np.shape(A)
-    b = np.random.randn(dims,1)
-    cg_plot(A,b)
+    cg_plot(A)
     A = np.loadtxt("3d.txt",delimiter=',')
     [dims,dims] = np.shape(A)
-    b = np.random.randn(dims,1)
-    cg_plot(A,b)
+    cg_plot(A)

@@ -240,16 +240,17 @@ class gibbs_cheby:
         error_prev = 1.5
         x_samples = np.zeros([sample_num,m])
         #b = [i for i in range(m)]
-        b = np.random.randn(m)
-        #for i in range(m):
-        #    if b[i] > 0:
-        #        b[i] = 1
-        #    else:
-        #        b[i] = -1
+        b = np.random.randn(sample_num,m)
+        for j in range(sample_num):
+            for i in range(m):
+                if b[j,i] > 0:
+                    b[j,i] = 1
+                else:
+                    b[j,i] = -1
         print("b is {}".format(b))
         print("shape of b is {}".format(np.shape(b)))
         #initialize residuals
-        r = np.asarray([b - np.matmul(A,x_samples[i,:]) for i in range(sample_num)])
+        r = np.asarray([b[i,:] - np.matmul(A,x_samples[i,:]) for i in range(sample_num)])
         #initialize p, search direction
         p = copy.copy(r)
         #normalizing constant
@@ -260,15 +261,15 @@ class gibbs_cheby:
         count=0
         p_matrix = np.array([])
         d_vector = np.array([])
-        while count < m:
+        while count < 2*m:
             print("iter {} / {}".format(count,m)) 
             cov = Ecov().fit(y_samples).covariance_
             error = np.linalg.norm(self.cov - cov)/(np.linalg.norm(self.cov))
             if (error > (1.05)*error_prev):
                 print("lost conjugacy. error is {} while previous error is {}".format(error,error_prev))
-                print("reverting to more accurate samples at prev iteration")
-                y_samples = y_samples_prev
-                break
+                #print("reverting to more accurate samples at prev iteration")
+                #y_samples = y_samples_prev
+                #break
             else:
                 error_prev = error
                 y_samples_prev = copy.copy(y_samples)

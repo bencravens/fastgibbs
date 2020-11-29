@@ -38,7 +38,7 @@ D = zeros(n,n);
 
 %populate the matrix
 for i=1:n
-    D(i,i) = 1/i^3;
+    D(i,i) = i^(2);
 end
 
 %normalize the matrix
@@ -57,11 +57,8 @@ Random_matrix = rand(n,n);
 %now we want our result
 res = Q*D*Q';
 cov = res;
-heatmap(cov)
 evals = eigs(cov,n);
-A = inv(cov);
 mat = 'well spaced eigs'
-cond(cov)
 %% 2D LAPLACIAN
 clear all;
 x = input("Enter the x dimension of the grid: ");

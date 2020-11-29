@@ -9,7 +9,7 @@ if str=="2d"
     [lambda,V,A] = laplacian([x,y],{'NN' 'NN'},x*y);
     %we will add a constant on the diagonal to make A invertible, 
     %so we must also increase the evals by this constant
-    lambda = lambda + alpha*ones(x*y,1);
+    eigs = lambda + alpha*ones(x*y,1);
     A = A + alpha*eye(x*y,x*y);
 
     %write matrix to file

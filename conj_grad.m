@@ -21,7 +21,7 @@ function [x,y,cov,count] = conj_grad(A,b)
     cov_min = zeros(m,m);
     x_min = zeros(m,1);
     y_min = zeros(m,1);
-    while count<300
+    while count<500
         %if mod(count,50)==0
         %    sprintf('iteration %d, residual %d',count,norm(r))
         %    sprintf('relative error at iteration %d is %d',count,rel_err)
@@ -44,8 +44,8 @@ function [x,y,cov,count] = conj_grad(A,b)
         d = p'*A*p;
         %check for convergence
         if norm(r)<eps
-            %sprintf('converged at iteration %d with r=%d',count,norm(r))
-            %break;
+            sprintf('converged at iteration %d with r=%d',count,norm(r))
+            break;
         end
         %cannot manually invert d matrix, so just make each nonzero diagonal
         %entry lambda = 1/lambda... these correspond to the evals in the 
@@ -68,7 +68,7 @@ function [x,y,cov,count] = conj_grad(A,b)
             cov_min = cov;
             x_min = x;
             y_min = y;
-        elseif rel_err > (1.1)*min_err
+        elseif rel_err > (1.2)*min_err
             sprintf('lost conjugacy, prior error %d, current error %d. breaking loop',min_err,rel_err)
             %reverting to old covariance
             cov = cov_min;

@@ -5,6 +5,7 @@ function [x,y,cov,count] = conj_grad(A,b)
     %initialize sample as well
     y = zeros(m,1);
     %initial residual
+    r_0 = b - A*x;
     r = b - A*x;
     %initial search direction
     p = r;
@@ -21,7 +22,7 @@ function [x,y,cov,count] = conj_grad(A,b)
     cov_min = zeros(m,m);
     x_min = zeros(m,1);
     y_min = zeros(m,1);
-    while count<500
+    while count<100
         %if mod(count,50)==0
         %    sprintf('iteration %d, residual %d',count,norm(r))
         %    sprintf('relative error at iteration %d is %d',count,rel_err)
@@ -43,8 +44,10 @@ function [x,y,cov,count] = conj_grad(A,b)
         p = r - beta*p;
         d = p'*A*p;
         %check for convergence
-        if norm(r)<eps
-            sprintf('converged at iteration %d with r=%d',count,norm(r))
+        %relative residual norm(b-A*x)/norm(b)
+        residual = norm(r)/norm(b);
+        if residual<1e-4
+            sprintf('converged at iteration %d with relative residual=%d',count,residual)
             break;
         end
         %cannot manually invert d matrix, so just make each nonzero diagonal

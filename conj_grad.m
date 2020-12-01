@@ -22,7 +22,7 @@ function [x,y,cov,count] = conj_grad(A,b)
     cov_min = zeros(m,m);
     x_min = zeros(m,1);
     y_min = zeros(m,1);
-    while count<100
+    while count<9
         %if mod(count,50)==0
         %    sprintf('iteration %d, residual %d',count,norm(r))
         %    sprintf('relative error at iteration %d is %d',count,rel_err)

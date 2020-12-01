@@ -17,11 +17,11 @@ for i=1:x
     for j=1:y
         arg = -((s(i) - s(j))^2)/(2*(1.5)^2);
         gauss_matrix(i,j) = 2*exp(arg);
-        if i==j
-            gauss_matrix(i,j) = gauss_matrix(i,j) + epsilon;
-        end
     end
 end
+
+%add diagonal bump
+gauss_matrix = gauss_matrix + epsilon*eye(x)
 
 cov = gauss_matrix;
 evals = eigs(cov,x);
@@ -83,7 +83,7 @@ sprintf('condition number of matrix is %d',cond(A))
 [dims,dims] = size(A);
 %b = [+-1, +-1, ... , +-1]'
 %need to average over many cov_emps
-samples=1e2;
+samples=1e3;
 cov_emp_samples = zeros(dims,dims,samples);
 x_emp_set = zeros(dims,samples);
 for i=1:samples
@@ -129,8 +129,9 @@ hold off;
 evals_emp = eigs(cov_emp,dims);
 rel_err = abs(norm(cov - cov_emp)/norm(cov));
 figure();
-semilogy(sort(evals));
+%just plotting the first 20 evals
+semilogy(evals(1:20));
 hold on;
-semilogy(sort(evals_emp),'o');
+semilogy(evals_emp(1:20),'o','MarkerSize',12);
 legend('real eigenvalues', 'CG eigenvalues');
 title(sprintf('eigenvalues of empirical vs real cov of matrix %s. Rel err in matrix %d',mat,rel_err));

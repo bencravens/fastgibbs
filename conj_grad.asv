@@ -48,11 +48,11 @@ function [x,y,c,count,lost_conj] = conj_grad(A,b,iters)
         end
         mean_conj = mean(conj_vec);
         if mean_conj > 1e-2
-            lost_conj = count+1;
-            sprintf('lost conjugacy at iteration %d',lost_conj)
+            lost_conj = count+1
+            sprintf('lost conjugacy at iteration %d
             break;
         end
-        sprintf('mean A conjugacy at iter %d is: %d',count+1,mean(conj_vec));
+        sprintf('mean A conjugacy at iter %d is: %d',count+1,mean(conj_vec))
         %calculate covariance at this point
         %cov_approx_part = (A)*(1/d)*(p*p')*(A);
         %cov = cov + cov_approx_part;
